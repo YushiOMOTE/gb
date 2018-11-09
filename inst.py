@@ -420,20 +420,17 @@ def _dec(cpu, r):
 	return a
 
 
-def _evalif(s):
+def _eval(s):
 	s = s.lower()
+
 	if s == 'z':
 		return f'cpu.regs.f.z'
 	elif s == 'nz':
 		return f'~cpu.regs.f.z'
-	elif s == 'c':
+	elif s == 'cf':
 		return f'cpu.regs.f.c'
 	elif s == 'nc':
 		return f'~cpu.regs.f.c'
-
-
-def _eval(s):
-	s = s.lower()
 
 	if s.startswith('('):
 		s = s[1:-1]
