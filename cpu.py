@@ -195,6 +195,17 @@ regs:
 		return s
 
 
+class MemCtrl(object):
+	def __init__(self):
+		self.ram = np.fromfile('sgb_bios.bin', dtype=np.uint8)
+
+	def __getitem__(self, addr):
+		return self.ram[addr]
+
+	def __setitem__(self, addr, val):
+		self.ram[addr] = np.uint8(val)
+
+
 class MemAccessor(object):
 	def __init__(self, mc, unit):
 		self.mc = mc
@@ -211,17 +222,17 @@ class MemAccessor(object):
 			self.mc[addr + i] = (val >> (i * 8)) & 0xff
 
 
-class MemCtrl(object):
-	def __init__(self):
-		self.ram = np.fromfile('sgb_bios.bin', dtype=np.uint8)
-		self.as8 = MemAccessor(self, 1)
-		self.as16 = MemAccessor(self, 2)
+class MemFetcher(object):
+	def __init__(self, mc):
+		self.mc = mc
+		self.as8 = MemAccessor(mc, 1)
+		self.as16 = MemAccessor(mc, 2)
 
 	def __getitem__(self, addr):
-		return self.ram[addr]
+		return self.mc[addr]
 
 	def __setitem__(self, addr, val):
-		self.ram[addr] = np.uint8(val)
+		self.mc[addr] = np.uint8(val)
 
 
 class Op(object):
@@ -236,7 +247,7 @@ class Op(object):
 class Cpu(object):
 	def __init__(self, mc):
 		self.regs = Regs()
-		self.mc = mc
+		self.mc = MemFetcher(mc)
 
 	def fetch(self):
 		b = self.mc[self.regs.pc]

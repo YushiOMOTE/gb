@@ -434,7 +434,7 @@ def _eval(s):
 
 	if s.startswith('('):
 		s = s[1:-1]
-		return f'cpu.mc[{_eval(s)}]'
+		return f'cpu.mc.as8[{_eval(s)}]'
 
 	v = []
 	for i in s.split('+'):
