@@ -102,10 +102,22 @@ ld_tmpl = '''
 	{} = {}
 '''
 
+# LDD
+ldd_tmpl = '''
+	{} = {}
+	cpu.regs.hl -= 1
+'''
+
+# LDI
+ldi_tmpl = '''
+	{} = {}
+	cpu.regs.hl += 1
+'''
+
 # LGHL
 ldhl_tmpl = '''
-	# {1}
-	{0} = add_sp(cpu, cpu.fetch())
+	# {0}, {1}
+	cpu.regs.hl = add_sp(cpu, cpu.fetch())
 	cpu.regs.f.z = 0
 	cpu.regs.f.n = 0
 '''
@@ -408,7 +420,7 @@ def _dec(cpu, r):
 	return a
 
 
-def _evalf(s):
+def _evalif(s):
 	s = s.lower()
 	if s == 'z':
 		return f'cpu.regs.f.z'
@@ -420,30 +432,24 @@ def _evalf(s):
 		return f'~cpu.regs.f.c'
 
 
-def _eval(s, off=None):
+def _eval(s):
 	s = s.lower()
 
 	if s.startswith('('):
 		s = s[1:-1]
-		off = f' + 0x{off:04x}' if off else ''
-		return f'cpu.mc[{_eval(s)}{off}]'
-
-	if s.endswith('+'):
-		s = s[0:-1]
-		return f'_inc(cpu, "{s}")'
-	elif s.endswith('-'):
-		s = s[0:-1]
-		return f'_dec(cpu, "{s}")'
+		return f'cpu.mc[{_eval(s)}]'
 
 	v = []
 	for i in s.split('+'):
-		if i == 'n':
+		if i == 'a8' or i == 'd8':
 			v.append('cpu.fetch()')
-		elif i == 'nn':
+		elif i == 'a16' or i == 'd16':
 			v.append('cpu.fetch16()')
+		elif i == 'r8':
+			v.append('np.int8(cpu.fetch())')
 		else:
 			try:
-				v.append(f'{int(i, 0)})')
+				v.append(f'{int(i, 0)}')
 			except:
 				v.append(f'cpu.regs.{i}')
 	return '+'.join(v)
@@ -453,9 +459,9 @@ def _f(s, *args):
 	return s.format(*args)
 
 
-def _i(op, type, *args, debug=False, off=None):
+def _i(op, type, *args, debug=False):
 	tmpl = globals()[f'{type}_tmpl']
-	body = _f(tmpl, *[_eval(i, off=off) for i in args])
+	body = _f(tmpl, *[_eval(i) for i in args])
 	method = _f(base_tmpl, op, body)
 	if debug:
 		print(f'# {op:02x}: {type} {",".join(args)}')
@@ -480,24 +486,14 @@ def _load():
 
 		# print(f'Generate {code:02x}: {op} {args}')
 
-		if op == 'ld' or op == 'ldh':
-			if code == 0xf8:
-				_i(code, 'ldhl', *args, off=off)
-			else:
-				if code == 0xe2 or \
-        code == 0xf2 or \
-        op == 'ldh':
-					off = 0xff00
-				else:
-					off = None
-
-				_i(code, 'ld', *args, off=off)
+		if op == 'ldhl' or op == 'ldd' or op == 'ldi' or op == 'ld':
+			_i(code, op, *args, debug=True)
 
 		elif op == 'inc' or op == 'dec':
-			_i(code, f'{op}{bits}', *args)
+			_i(code, f'{op}{bits}', *args, debug=True)
 
 		elif op == 'push' or op == 'pop':
-			_i(code, op, *args)
+			_i(code, op, *args, debug=True)
 
 		elif op == 'add':
 			if code == 0xe8:

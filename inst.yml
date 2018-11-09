@@ -13,7 +13,7 @@
   operator: ld
   operands:
     - bc
-    - nn
+    - d16
   bits: 16
   size: 3
   time: 12
@@ -70,7 +70,7 @@
   operator: ld
   operands:
     - b
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -91,7 +91,7 @@
 - code: 8
   operator: ld
   operands:
-    - (nn)
+    - (a16)
     - sp
   bits: 16
   size: 3
@@ -161,7 +161,7 @@
   operator: ld
   operands:
     - c
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -194,7 +194,7 @@
   operator: ld
   operands:
     - de
-    - nn
+    - d16
   bits: 16
   size: 3
   time: 12
@@ -251,7 +251,7 @@
   operator: ld
   operands:
     - d
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -272,7 +272,7 @@
 - code: 24
   operator: jr
   operands:
-    - n
+    - r8
   bits: 0
   size: 2
   time: 12
@@ -341,7 +341,7 @@
   operator: ld
   operands:
     - e
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -363,7 +363,7 @@
   operator: jr
   operands:
     - nz
-    - n
+    - r8
   bits: 0
   size: 2
   time:
@@ -377,7 +377,7 @@
   operator: ld
   operands:
     - hl
-    - nn
+    - d16
   bits: 16
   size: 3
   time: 12
@@ -386,9 +386,9 @@
   h: "-"
   c: "-"
 - code: 34
-  operator: ld
+  operator: ldi
   operands:
-    - (hl+)
+    - (hl)
     - a
   bits: 8
   size: 1
@@ -434,7 +434,7 @@
   operator: ld
   operands:
     - h
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -456,7 +456,7 @@
   operator: jr
   operands:
     - z
-    - n
+    - r8
   bits: 0
   size: 2
   time:
@@ -479,10 +479,10 @@
   h: H
   c: C
 - code: 42
-  operator: ld
+  operator: ldi
   operands:
     - a
-    - (hl+)
+    - (hl)
   bits: 8
   size: 1
   time: 8
@@ -527,7 +527,7 @@
   operator: ld
   operands:
     - l
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -549,7 +549,7 @@
   operator: jr
   operands:
     - nc
-    - n
+    - r8
   bits: 0
   size: 2
   time:
@@ -563,7 +563,7 @@
   operator: ld
   operands:
     - sp
-    - nn
+    - d16
   bits: 16
   size: 3
   time: 12
@@ -572,9 +572,9 @@
   h: "-"
   c: "-"
 - code: 50
-  operator: ld
+  operator: ldd
   operands:
-    - (hl-)
+    - (hl)
     - a
   bits: 8
   size: 1
@@ -620,7 +620,7 @@
   operator: ld
   operands:
     - (hl)
-    - n
+    - d8
   bits: 8
   size: 2
   time: 12
@@ -642,7 +642,7 @@
   operator: jr
   operands:
     - c
-    - n
+    - r8
   bits: 0
   size: 2
   time:
@@ -665,10 +665,10 @@
   h: H
   c: C
 - code: 58
-  operator: ld
+  operator: ldd
   operands:
     - a
-    - (hl-)
+    - (hl)
   bits: 8
   size: 1
   time: 8
@@ -713,7 +713,7 @@
   operator: ld
   operands:
     - a
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -2253,7 +2253,7 @@
   operator: jp
   operands:
     - nz
-    - nn
+    - a16
   bits: 0
   size: 3
   time:
@@ -2266,7 +2266,7 @@
 - code: 195
   operator: jp
   operands:
-    - nn
+    - a16
   bits: 0
   size: 3
   time: 16
@@ -2278,7 +2278,7 @@
   operator: call
   operands:
     - nz
-    - nn
+    - a16
   bits: 0
   size: 3
   time:
@@ -2303,7 +2303,7 @@
   operator: add
   operands:
     - a
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -2349,7 +2349,7 @@
   operator: jp
   operands:
     - z
-    - nn
+    - a16
   bits: 0
   size: 3
   time:
@@ -2374,7 +2374,7 @@
   operator: call
   operands:
     - z
-    - nn
+    - a16
   bits: 0
   size: 3
   time:
@@ -2387,7 +2387,7 @@
 - code: 205
   operator: call
   operands:
-    - nn
+    - a16
   bits: 0
   size: 3
   time: 24
@@ -2399,7 +2399,7 @@
   operator: adc
   operands:
     - a
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -2446,7 +2446,7 @@
   operator: jp
   operands:
     - nc
-    - nn
+    - a16
   bits: 0
   size: 3
   time:
@@ -2460,7 +2460,7 @@
   operator: call
   operands:
     - nc
-    - nn
+    - a16
   bits: 0
   size: 3
   time:
@@ -2484,7 +2484,7 @@
 - code: 214
   operator: sub
   operands:
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -2506,7 +2506,7 @@
 - code: 216
   operator: ret
   operands:
-    - c
+    - cf
   bits: 0
   size: 1
   time:
@@ -2529,8 +2529,8 @@
 - code: 218
   operator: jp
   operands:
-    - c
-    - nn
+    - cf
+    - a16
   bits: 0
   size: 3
   time:
@@ -2543,8 +2543,8 @@
 - code: 220
   operator: call
   operands:
-    - c
-    - nn
+    - cf
+    - a16
   bits: 0
   size: 3
   time:
@@ -2558,7 +2558,7 @@
   operator: sbc
   operands:
     - a
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -2578,9 +2578,9 @@
   h: "-"
   c: "-"
 - code: 224
-  operator: ldh
+  operator: ld
   operands:
-    - (n)
+    - (0xff00+a8)
     - a
   bits: 8
   size: 2
@@ -2603,7 +2603,7 @@
 - code: 226
   operator: ld
   operands:
-    - (c)
+    - (0xff00+c)
     - a
   bits: 8
   size: 2
@@ -2626,7 +2626,7 @@
 - code: 230
   operator: and
   operands:
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -2649,7 +2649,7 @@
   operator: add
   operands:
     - sp
-    - n
+    - r8
   bits: 16
   size: 2
   time: 16
@@ -2671,7 +2671,7 @@
 - code: 234
   operator: ld
   operands:
-    - (nn)
+    - (a16)
     - a
   bits: 8
   size: 3
@@ -2683,7 +2683,7 @@
 - code: 238
   operator: xor
   operands:
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -2703,10 +2703,10 @@
   h: "-"
   c: "-"
 - code: 240
-  operator: ldh
+  operator: ld
   operands:
     - a
-    - (n)
+    - (0xff00+a8)
   bits: 8
   size: 2
   time: 12
@@ -2729,7 +2729,7 @@
   operator: ld
   operands:
     - a
-    - (c)
+    - (0xff00+c)
   bits: 8
   size: 2
   time: 8
@@ -2761,7 +2761,7 @@
 - code: 246
   operator: or
   operands:
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8
@@ -2781,10 +2781,10 @@
   h: "-"
   c: "-"
 - code: 248
-  operator: ld
+  operator: ldhl
   operands:
-    - hl
-    - sp+n
+    - sp
+    - r8
   bits: 16
   size: 2
   time: 12
@@ -2808,7 +2808,7 @@
   operator: ld
   operands:
     - a
-    - (nn)
+    - (a16)
   bits: 8
   size: 3
   time: 16
@@ -2829,7 +2829,7 @@
 - code: 254
   operator: cp
   operands:
-    - n
+    - d8
   bits: 8
   size: 2
   time: 8

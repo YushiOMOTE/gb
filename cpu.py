@@ -195,21 +195,33 @@ regs:
 		return s
 
 
+class MemAccessor(object):
+	def __init__(self, mc, unit):
+		self.mc = mc
+		self.unit = unit
+
+	def __getitem__(self, addr):
+		v = 0
+		for i in range(0, self.unit):
+			v |= (self.mc[addr + i] << (i * 8))
+		return v
+
+	def __setitem__(self, addr, val):
+		for i in range(0, self.unit):
+			self.mc[addr + i] = (val >> (i * 8)) & 0xff
+
+
 class MemCtrl(object):
 	def __init__(self):
-		# self.ram = np.array([0] * 32 * 1024, dtype=np.uint8)
 		self.ram = np.fromfile('sgb_bios.bin', dtype=np.uint8)
+		self.as8 = MemAccessor(self, 1)
+		self.as16 = MemAccessor(self, 2)
 
 	def __getitem__(self, addr):
 		return self.ram[addr]
 
 	def __setitem__(self, addr, val):
-		self.ram[addr] = val
-
-
-class Accessor(object):
-	def __init__(self, regs: Regs, mc: MemCtrl):
-		pass
+		self.ram[addr] = np.uint8(val)
 
 
 class Op(object):
@@ -784,3 +796,6 @@ class TestCpu(unittest.TestCase):
 
 if __name__ == '__main__':
 	unittest.main()
+
+	# * read as16 or as8
+	# * read flags
