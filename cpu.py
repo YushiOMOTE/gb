@@ -1,21 +1,45 @@
 import numpy as np
-
+import inst
 
 class Flags(object):
 	def __init__(self, *args, **kwargs):
 		self._v = np.uint8()
 
-	def z(self):
-		return bool(self._v & 0x80)
+	@property
+	def z(self) -> int:
+		return int(bool(self._v & 0x80))
 
-	def n(self) -> bool:
-		return bool(self._v & 0x40)
+	@z.setter
+	def z(self, v):
+		b = int(bool(v))
+		self.val = (self.val & 0x7f) | (b << 7)
 
-	def h(self) -> bool:
-		return bool(self._v & 0x20)
+	@property
+	def n(self) -> int:
+		return int(bool(self._v & 0x40))
 
-	def c(self) -> bool:
-		return bool(self._v & 0x10)
+	@n.setter
+	def n(self, v):
+		b = int(bool(v))
+		self.val = (self.val & 0xbf) | (b << 6)
+
+	@property
+	def h(self) -> int:
+		return int(bool(self._v & 0x20))
+
+	@h.setter
+	def h(self, v):
+		b = int(bool(v))
+		self.val = (self.val & 0xdf) | (b << 5)
+
+	@property
+	def c(self) -> int:
+		return int(bool(self._v & 0x10))
+
+	@c.setter
+	def c(self, v):
+		b = int(bool(v))
+		self.val = (self.val & 0xef) | (b << 4)
 
 	@property
 	def val(self) -> np.uint8:
@@ -23,15 +47,12 @@ class Flags(object):
 
 	@val.setter
 	def val(self, v):
-		if isinstance(v, np.uint8):
-			self._v = v
-		else:
-			self._v = np.uint8(v)
+		self._v = np.uint8(v)
 
 	def __str__(self):
-		return '{}{}{}{}____'.format('z' if self.z() else '_', 'n'
-																															if self.n() else '_', 'h'
-																															if self.h() else '_', 'c' if self.c() else '_')
+		return '{}{}{}{}____'.format(
+		    'z' if self.z() else '_', 'n' if self.n() else '_',
+		    'h' if self.h() else '_', 'c' if self.c() else '_')
 
 
 class Regs(object):
@@ -161,7 +182,7 @@ regs:
 	 pc [{:04x}]
 	flg [{}]
 		'''.format(self._a, self._f.val, self._b, self._c, self._d, self._e, self._h,
-													self._l, self._sp, self._pc, str(self._f))
+		           self._l, self._sp, self._pc, str(self._f))
 		return s
 
 
@@ -196,60 +217,6 @@ class Cpu(object):
 		self.regs = Regs()
 		self.mc = mc
 
-		self.r = {
-						0: 'self.regs.b',
-						1: 'self.regs.c',
-						2: 'self.regs.d',
-						3: 'self.regs.e',
-						4: 'self.regs.h',
-						5: 'self.regs.l',
-						6: 'self.mc[self.regs.hl]',
-						7: 'self.regs.a',
-		}
-
-		self.rp = {
-						0: 'self.regs.bc',
-						1: 'self.regs.de',
-						2: 'self.regs.hl',
-						3: 'self.regs.sp',
-		}
-
-		self.table_x = {
-						0: self.decode_x0,
-						1: self.decode_x1,
-						2: self.decode_x2,
-						3: self.decode_x3,
-		}
-
-		self.table_x0 = {
-						0: self.op_reljmp,
-						#1: self.op_ld_add_16,
-						1: self.op_ld_imm16_add,
-						2: self.op_ld_ind1,
-						#3: self.op_inc_dec_16,
-						#4: self.op_inc8,
-						#5: self.op_dec8,
-						6: self.op_ld_imm8,
-						#7: self.op_acc_flgs,
-		}
-
-		self.table_x1 = {
-						0: self.op_ld_reg8,
-						1: self.op_ld_reg8,
-						2: self.op_ld_reg8,
-						3: self.op_ld_reg8,
-						4: self.op_ld_reg8,
-						5: self.op_ld_reg8,
-						6: self.op_ld_reg8,
-						7: self.op_ld_reg8,
-		}
-
-		self.table_x3 = {
-						0: self.op_ld_ind2,
-						1: self.op_pop,
-						2: self.op_ld_ind3,
-		}
-
 	def fetch(self):
 		b = self.mc[self.regs.pc]
 		print('fetch {:04x} {:02x}'.format(self.regs.pc, b))
@@ -260,165 +227,13 @@ class Cpu(object):
 		a = self.fetch()
 		return (self.fetch() << 8) | a
 
-	def decode_cb(self, b):
-		''' decode cb-prefixed opcode '''
-		raise "Unimplemented cb-prefixed"
-
-	def decode_np(self, b):
-		''' decode unprefixed opcode '''
-		op = Op(b)
-		self.table_x[op.x](op)
-
-	def decode_x0(self, op):
-		self.table_x0[op.z](op)
-
-	def decode_x1(self, op):
-		self.table_x1[op.z](op)
-
-	def decode_x2(self, op):
-		raise "Unimplemented x2"
-
-	def decode_x3(self, op):
-		self.table_x3[op.z](op)
-
-	def op_reljmp(self, op):
-		if op.y == 1:
-			a = self.fetch16()
-			self.mc[a] = self.regs.sp & 0xff
-			self.mc[a + 1] = (self.regs.sp >> 8) & 0xff
-		#raise Exception(f'unimplemented {op.y}')
-
-	def op_ld_imm16_add(self, op):
-		if op.q == 0:
-			exec(f'{self.rp[op.p]} = {self.fetch16()}')
-		else:
-			exec(f'self.regs.hl += {self.rp[op.p]}')
-
-	def op_ld_imm8(self, op):
-		exec(f'{self.r[op.y]} = {self.fetch()}')
-
-	def op_ld_reg8(self, op):
-		exec(f'{self.r[op.y]} = {self.r[op.z]}')
-
-	def op_ld_ind1(self, op):
-		t = (op.q, op.p)
-
-		if t == (0, 0):
-			self.mc[self.regs.bc] = self.regs.a
-		elif t == (0, 1):
-			self.mc[self.regs.de] = self.regs.a
-		elif t == (0, 2):
-			# LDI (HL),A 22 8
-			self.mc[self.regs.hl] = self.regs.a
-			self.regs.hl += 1
-		elif t == (0, 3):
-			# LDD (HL),A 32 8
-			self.mc[self.regs.hl] = self.regs.a
-			self.regs.hl -= 1
-		elif t == (1, 0):
-			self.regs.a = self.mc[self.regs.bc]
-		elif t == (1, 1):
-			self.regs.a = self.mc[self.regs.de]
-		elif t == (1, 2):
-			# LDI A,(HL) 2A 8
-			self.regs.a = self.mc[self.regs.hl]
-			self.regs.hl += 1
-		elif t == (1, 3):
-			# LDD A,(HL) 3A 8
-			self.regs.a = self.mc[self.regs.hl]
-			self.regs.hl -= 1
-
-	def op_ld_ind2(self, op):
-		t = (op.q, op.p)
-
-		if t == (0, 0):
-			raise "unimplemented (0, 0)"
-		elif t == (0, 1):
-			raise "unimplemented (0, 1)"
-		elif t == (0, 2):
-			# LD ($FF00+n),A E0 12
-			a = self.fetch()
-			self.mc[a + 0xff00] = self.regs.a
-		elif t == (0, 3):
-			a = self.fetch()
-			self.regs.a = self.mc[a + 0xff00]
-		elif t == (1, 0):
-			raise "unimplemented (1, 0)"
-		elif t == (1, 1):
-			raise "unimplemented (1, 1)"
-		elif t == (1, 2):
-			raise "unimplemented (1, 2)"
-		elif t == (1, 3):
-			# LDHL SP,n F8 12
-			self.regs.hl = self.regs.sp + self.fetch()
-			#raise "unimplemented (1, 3)"
-
-	def op_pop(self, op):
-		t = (op.q, op.p)
-
-		if t == (0, 0):
-			raise "unimplemented (0, 0)"
-		elif t == (0, 1):
-			raise "unimplemented (0, 1)"
-		elif t == (0, 2):
-			raise "unimplemented (0, 2)"
-		elif t == (0, 3):
-			raise "unimplemented (0, 3)"
-		elif t == (1, 0):
-			raise "unimplemented (1, 0)"
-		elif t == (1, 1):
-			raise "unimplemented (1, 1)"
-		elif t == (1, 2):
-			raise "unimplemented (1, 2)"
-		elif t == (1, 3):
-			self.regs.sp = self.regs.hl
-
-	def op_ld_ind3(self, op):
-		t = (op.q, op.p)
-
-		if t == (0, 0):
-			self.mc[self.regs.bc] = self.regs.a
-		elif t == (0, 1):
-			self.mc[self.regs.de] = self.regs.a
-		elif t == (0, 2):
-			# LD ($FF00+C),A E2 8
-			self.mc[self.regs.c + 0xff00] = self.regs.a
-		elif t == (0, 3):
-			# LD A,($FF00+C) F2 8
-			self.regs.a = self.mc[self.regs.c + 0xff00]
-		elif t == (1, 0):
-			self.regs.a = self.mc[self.regs.bc]
-		elif t == (1, 1):
-			self.regs.a = self.mc[self.regs.de]
-		elif t == (1, 2):
-			a = self.fetch16()
-			self.mc[a] = self.regs.a
-			# Z80:
-			# a = self.fetch16()
-			# self.regs.l = self.mc[a]
-			# self.regs.h = self.mc[a + 1]
-		elif t == (1, 3):
-			a = self.fetch16()
-			self.regs.a = self.mc[a]
-
 	def decode(self):
 		b = self.fetch()
 		if b == 0xcb:
 			b = self.fetch()
-			self.decode_cb(b)
+			inst.op(self, b << 8 | b)
 		else:
-			self.decode_np(b)
-
-
-#with open('sgb_bios.bin', mode='rb') as f:
-#	rom = f.read()
-
-#print(f'{rom}')
-
-#mc = MemCtrl()
-#t = Cpu(mc)
-#print(f'{str(t)}')
-#t.decode()
+			inst.op(self, b)
 
 import unittest
 
@@ -460,12 +275,8 @@ class TestCpu(unittest.TestCase):
 		elif s.startswith('('):
 			s = s[1:-1]
 			return m[self._eval(r, m, s)]
-			# try:
-			#     return m[int(s, 0)]
-			# except:
-			#     return m[getattr(r, s)]
 		else:
-			return self._eval(r, m, s)  #getattr(r, s)
+			return self._eval(r, m, s)
 
 	def _eval(self, r, m, s):
 		v = 0
