@@ -77,6 +77,15 @@ class Regs(object):
 		self._a = np.uint8(v)
 
 	@property
+	def af(self):
+		return np.uint16(self.a << 8 | self.f.val)
+
+	@af.setter
+	def af(self, v):
+		self.a = (v >> 8) & 0xff
+		self.f.val = v & 0xff
+
+	@property
 	def b(self) -> np.uint8:
 		return self._b
 
@@ -711,6 +720,67 @@ class TestCpu(unittest.TestCase):
 	def test_08(self):
 		self._test_ld([0x08, 0x33, 0x44], '(0x4433)', 'sp')
 
+	def _pushpop(self, op):
+		m = op + [i % 254 + 1 for i in range(65536)]
+		cpu = Cpu(m)
+
+		cpu.regs.sp = 0x1004
+		m[0x1004] = 0x01
+		m[0x1005] = 0x02
+		m[0x1006] = 0x03
+		m[0x1007] = 0x04
+
+		return cpu
+
+	# PUSH AF F5 16
+	# PUSH BC C5 16
+	# PUSH DE D5 16
+	# PUSH HL E5 16
+	# POP AF F1 12
+	# POP BC C1 12
+	# POP DE D1 12
+	# POP HL E1 12
+
+	def test_pushpop(self):
+		cpu = self._pushpop([0xf5, 0xc5, 0xd5, 0xe5,
+							 0xf1, 0xc1, 0xd1, 0xe1,
+							 0xe1, 0xd1])
+		cpu.regs.af = 0x1122
+		cpu.regs.bc = 0x2233
+		cpu.regs.de = 0x4455
+		cpu.regs.hl = 0x6677
+
+		self.assertEqual(cpu.regs.af, 0x1122)
+		self.assertEqual(cpu.regs.bc, 0x2233)
+		self.assertEqual(cpu.regs.de, 0x4455)
+		self.assertEqual(cpu.regs.hl, 0x6677)
+
+		cpu.decode()
+		self.assertEqual(cpu.mc[0x1002], 0x22)
+		self.assertEqual(cpu.mc[0x1003], 0x11)
+		cpu.decode()
+		self.assertEqual(cpu.mc[0x1000], 0x33)
+		self.assertEqual(cpu.mc[0x1001], 0x22)
+		cpu.decode()
+		self.assertEqual(cpu.mc[0x0ffe], 0x55)
+		self.assertEqual(cpu.mc[0x0fff], 0x44)
+		cpu.decode()
+		self.assertEqual(cpu.mc[0x0ffc], 0x77)
+		self.assertEqual(cpu.mc[0x0ffd], 0x66)
+
+		cpu.decode()
+		self.assertEqual(cpu.regs.af, 0x6677)
+		cpu.decode()
+		self.assertEqual(cpu.regs.bc, 0x4455)
+		cpu.decode()
+		self.assertEqual(cpu.regs.de, 0x2233)
+		cpu.decode()
+		self.assertEqual(cpu.regs.hl, 0x1122)
+
+		cpu.decode()
+		cpu.decode()
+		self.assertEqual(cpu.regs.de, 0x0403)
+		self.assertEqual(cpu.regs.hl, 0x0201)
 
 if __name__ == '__main__':
 	unittest.main()

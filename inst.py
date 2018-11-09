@@ -104,6 +104,20 @@ sub8_tmpl = '''
 	cpu.regs.f.z = z({0})
 '''
 
+# PUSH
+push_tmpl = '''
+	cpu.mc[cpu.regs.sp - 1] = ({0} >> 8) & 0xff
+	cpu.mc[cpu.regs.sp - 2] = {0} & 0xff
+	cpu.regs.sp -= 2
+'''
+
+# POP
+pop_tmpl = '''
+	v = cpu.mc[cpu.regs.sp] & 0xff
+	v |= (cpu.mc[cpu.regs.sp + 1] << 8) & 0xff00
+	{0} = v
+	cpu.regs.sp += 2
+'''
 
 def _inc(cpu, r):
 	a = getattr(cpu.regs, r)
@@ -158,7 +172,8 @@ def _i(op, type, *args, debug=False, off=None):
 		print(method)
 	exec(method, globals())
 
-def load():
+
+def _load():
 	path = os.path.dirname(os.path.abspath(__file__))
 
 	with open(f'{path}/inst.yml', 'r') as f:
@@ -172,7 +187,9 @@ def load():
 		op = i['operator']
 		args = i['operands']
 		bits = i['bits']
+
 		# print(f'Generate {code:02x}: {op} {args}')
+
 		if op == 'ld' or op == 'ldh':
 			if code == 0xe2 or \
 			   code == 0xf2 or \
@@ -182,8 +199,13 @@ def load():
 				off = None
 
 			_i(code, 'ld', *args, off=off)
-		if op == 'inc' or op == 'dec':
+
+		elif op == 'inc' or op == 'dec':
 			_i(code, f'{op}{bits}', *args, debug=True)
+
+		elif op == 'push' or op == 'pop':
+			_i(code, op, *args, debug=True)
+
 
 def op(cpu, op):
 	if op > 0xff:
@@ -192,4 +214,5 @@ def op(cpu, op):
 		f = f'op_{op:02x}'
 	globals()[f](cpu)
 
-load()
+
+_load()
