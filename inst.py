@@ -3,58 +3,13 @@ import os
 import numpy as np
 import functools
 
-
-# check nth-bit carry carry on add
-def _ca(n, *args):
-	m = (1 << n) - 1
-	s = functools.reduce(lambda s,x: s + (x & m), args, 0)
-	return s > m
-
-def ha8(*args):
-	return _ca(4, *args)
-
-def ca8(*args):
-	return _ca(8, *args)
-
-def ha16(*args):
-	return _ca(12, *args)
-
-def ca16(*args):
-	return _ca(16, *args)
-
-
-# check nth-bit carry on sub
-def _cs(n, *args):
-	m = (1 << n) - 1
-	a = args[0] & m
-	s = functools.reduce(lambda s,x: s + (x & m), args[1:], 0)
-	return a < s
-
-def hs8(*args):
-	return _cs(4, *args)
-
-def cs8(*args):
-	return _cs(8, *args)
+import alu
 
 
 def z(v):
 	if v == 0:
 		return 1
 	return 0
-
-
-def add_sp(cpu, v):
-	sp = cpu.regs.sp
-	if v >= 0:
-		vv = v
-		cpu.regs.f.h = ha16(sp, vv)
-		cpu.regs.f.c = ca16(sp, vv)
-		return cpu.regs.sp + vv
-	else:
-		vv = abs(v)
-		cpu.regs.f.h = ha15(sp, vv)
-		cpu.regs.f.c = ca16(sp, vv)
-		return cpu.regs.sp - vv
 
 
 def _rl(n, b):
@@ -99,18 +54,20 @@ dec16_tmpl = '''
 
 # INC8
 inc8_tmpl = '''
-	cpu.regs.f.h = ha8({0}, 1)
-	{0} += 1
+	s, [h, _], z = alu.add8({0}, 1)
+	{0} = s
+	cpu.regs.f.h = h
 	cpu.regs.f.n = 0
-	cpu.regs.f.z = z({0})
+	cpu.regs.f.z = z
 '''
 
 # DEC8
 dec8_tmpl = '''
-	cpu.regs.f.h = hs8({0}, 1)
-	{0} -= 1
+	s, [h, _], z = alu.sub8({0}, 1)
+	{0} = s
+	cpu.regs.f.h = h
 	cpu.regs.f.n = 1
-	cpu.regs.f.z = z({0})
+	cpu.regs.f.z = z
 '''
 
 # LD t,f
@@ -132,70 +89,68 @@ ldi_tmpl = '''
 
 # LGHL
 ldhl_tmpl = '''
-	# {0}, {1}
-	cpu.regs.hl = add_sp(cpu, cpu.mc.fetch())
+	s, [h, _], z = alu.add16e({0}, {1})
+	cpu.regs.hl = s
 	cpu.regs.f.z = 0
 	cpu.regs.f.n = 0
 '''
 
 # ADD16
 add16_tmpl = '''
-	v = {1}
-	cpu.regs.f.h = ha16({0}, v)
-	cpu.regs.f.c = ca16({0}, v)
-	{0} += v
+	s, [h, c], z = alu.add16({0}, {1})
+	{0} = s
+	cpu.regs.f.h = h
+	cpu.regs.f.c = c
 	cpu.regs.f.n = 0
 '''
 
 # ADD8
 add8_tmpl = '''
-	v = {1}
-	cpu.regs.f.h = ha8({0}, v)
-	cpu.regs.f.c = ca8({0}, v)
-	{0} += v
+	s, [h, c], z = alu.add8({0}, {1})
+	{0} = s
+	cpu.regs.f.h = h
+	cpu.regs.f.c = c
 	cpu.regs.f.n = 0
-	cpu.regs.f.z = z({0})
+	cpu.regs.f.z = z
 '''
 
 # ADD SP,n
 addsp_tmpl = '''
-	v = np.int8({1})
-	cpu.regs.sp = add_sp(cpu, v)
+	s, [h, c], z = alu.add16e({0}, {1})
+	cpu.regs.f.h = h
+	cpu.regs.f.c = c
 	cpu.regs.f.z = 0
 	cpu.regs.f.n = 0
 '''
 
 # ADC8
 adc_tmpl = '''
-	v = {1}
-	c = cpu.regs.f.c
-	cpu.regs.f.h = ha8({0}, v, c)
-	cpu.regs.f.c = ca8({0}, v, c)
-	{0} += (v + c)
+	s, [h, c], z = alu.add8({0}, {1}, cpu.regs.f.c)
+	{0} = s
+	cpu.regs.f.h = h
+	cpu.regs.f.c = c
 	cpu.regs.f.n = 0
-	cpu.regs.f.z = z({0})
+	cpu.regs.f.z = z
 '''
 
 # SUB
 sub_tmpl = '''
-	v = {}
-	a = cpu.regs.a
-	cpu.regs.f.h = hs8(a, v)
-	cpu.regs.f.c = cs8(a, v)
-	cpu.regs.a -= v
+	s, [h, c], z = alu.sub8(cpu.regs.a, {0})
+	cpu.regs.a = s
+	cpu.regs.f.h = h
+	cpu.regs.f.c = c
 	cpu.regs.f.n = 1
-	cpu.regs.f.z = z(cpu.regs.a)
+	cpu.regs.f.z = z
 '''
 
 # SBC
 sbc_tmpl = '''
-	a = {0}
-	v = {1}
-	cpu.regs.f.h = hs8(a, v, c)
-	cpu.regs.f.c = cs8(a, v, c)
-	{0} -= (v + c)
+	s, [h, c], z = alu.sub8(cpu.regs.a, {0}, cpu.regs.f.c)
+	cpu.regs.a = s
+	cpu.regs.f.h = h
+	cpu.regs.f.c = c
 	cpu.regs.f.n = 1
-	cpu.regs.f.z = z({0})
+	cpu.regs.f.z = z
 '''
 
 # AND
@@ -227,12 +182,11 @@ xor_tmpl = '''
 
 # CP
 cp_tmpl = '''
-	v = {0}
-	a = cpu.regs.a
-	cpu.regs.f.z = z(a - v)
+	_, [h, c], z = alu.sub8(cpu.regs.a, {0})
+	cpu.regs.f.z = z
 	cpu.regs.f.n = 1
-	cpu.regs.f.h = hs8(a, v)
-	cpu.regs.f.c = cs8(a, v)
+	cpu.regs.f.h = h
+	cpu.regs.f.c = c
 '''
 
 
