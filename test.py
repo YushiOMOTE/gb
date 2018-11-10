@@ -498,9 +498,8 @@ class TestCpu(unittest.TestCase):
 	# POP HL E1 12
 
 	def test_pushpop(self):
-		cpu = self._pushpop([0xf5, 0xc5, 0xd5, 0xe5,
-							 0xf1, 0xc1, 0xd1, 0xe1,
-							 0xe1, 0xd1])
+		cpu = self._pushpop(
+		    [0xf5, 0xc5, 0xd5, 0xe5, 0xf1, 0xc1, 0xd1, 0xe1, 0xe1, 0xd1])
 		cpu.regs.af = 0x1122
 		cpu.regs.bc = 0x2233
 		cpu.regs.de = 0x4455
@@ -537,6 +536,7 @@ class TestCpu(unittest.TestCase):
 		cpu.decode()
 		self.assertEqual(cpu.regs.de, 0x0403)
 		self.assertEqual(cpu.regs.hl, 0x0201)
+
 
 if __name__ == '__main__':
 	unittest.main()

@@ -1,6 +1,7 @@
 import numpy as np
 import inst
 
+
 class Flags(object):
 	def __init__(self, *args, **kwargs):
 		self._v = np.uint8()
@@ -227,12 +228,26 @@ class MemFetcher(object):
 		self.mc = mc
 		self.as8 = MemAccessor(mc, 1)
 		self.as16 = MemAccessor(mc, 2)
+		self.index = 0
 
 	def __getitem__(self, addr):
 		return self.mc[addr]
 
 	def __setitem__(self, addr, val):
 		self.mc[addr] = np.uint8(val)
+
+	def fetch_set(self, b):
+		self.index = b
+
+	def fetch(self):
+		b = self.mc[self.index]
+		print('fetch {:04x} {:02x}'.format(self.index, b))
+		self.index += 1
+		return b
+
+	def fetch16(self):
+		a = self.fetch()
+		return (self.fetch() << 8) | a
 
 
 class Op(object):
@@ -248,21 +263,19 @@ class Cpu(object):
 	def __init__(self, mc):
 		self.regs = Regs()
 		self.mc = MemFetcher(mc)
-
-	def fetch(self):
-		b = self.mc[self.regs.pc]
-		print('fetch {:04x} {:02x}'.format(self.regs.pc, b))
-		self.regs.pc += 1
-		return b
-
-	def fetch16(self):
-		a = self.fetch()
-		return (self.fetch() << 8) | a
+		self.ie = False
+		self.id = False
+		self.intr = False
+		self.halt = False
+		self.stop = False
+		self.time = 0
 
 	def decode(self):
-		b = self.fetch()
+		self.mc.fetch_set(self.regs.pc)
+
+		b = self.mc.fetch()
 		if b == 0xcb:
-			b = self.fetch()
+			b = self.mc.fetch()
 			inst.op(self, b << 8 | b)
 		else:
 			inst.op(self, b)

@@ -62,8 +62,10 @@ def _rr(n, b):
 
 
 base_tmpl = '''
-def op_{:02x}(cpu):
-	{}
+def op_{0:02x}(cpu, size={1}, time={2}):
+	{3}
+	cpu.regs.pc += size
+	cpu.time += time
 '''
 
 # NOP
@@ -117,7 +119,7 @@ ldi_tmpl = '''
 # LGHL
 ldhl_tmpl = '''
 	# {0}, {1}
-	cpu.regs.hl = add_sp(cpu, cpu.fetch())
+	cpu.regs.hl = add_sp(cpu, cpu.mc.fetch())
 	cpu.regs.f.z = 0
 	cpu.regs.f.n = 0
 '''
@@ -131,14 +133,6 @@ add16_tmpl = '''
 	cpu.regs.f.n = 0
 '''
 
-# ADD SP,n
-addsp_tmpl = '''
-	v = np.int8({1})
-	cpu.regs.sp = add_sp(cpu, v)
-	cpu.regs.f.z = 0
-	cpu.regs.f.n = 0
-'''
-
 # ADD8
 add8_tmpl = '''
 	v = {1}
@@ -147,6 +141,14 @@ add8_tmpl = '''
 	{0} += v
 	cpu.regs.f.n = 0
 	cpu.regs.f.z = z({0})
+'''
+
+# ADD SP,n
+addsp_tmpl = '''
+	v = np.int8({1})
+	cpu.regs.sp = add_sp(cpu, v)
+	cpu.regs.f.z = 0
+	cpu.regs.f.n = 0
 '''
 
 # ADC8
@@ -420,7 +422,7 @@ def _dec(cpu, r):
 	return a
 
 
-def _eval(s):
+def _eval(s, bits=8):
 	s = s.lower()
 
 	if s == 'z':
@@ -434,16 +436,16 @@ def _eval(s):
 
 	if s.startswith('('):
 		s = s[1:-1]
-		return f'cpu.mc.as8[{_eval(s)}]'
+		return f'cpu.mc.as{bits}[{_eval(s, bits)}]'
 
 	v = []
 	for i in s.split('+'):
 		if i == 'a8' or i == 'd8':
-			v.append('cpu.fetch()')
+			v.append('cpu.mc.fetch()')
 		elif i == 'a16' or i == 'd16':
-			v.append('cpu.fetch16()')
+			v.append('cpu.mc.fetch16()')
 		elif i == 'r8':
-			v.append('np.int8(cpu.fetch())')
+			v.append('np.int8(cpu.mc.fetch())')
 		else:
 			try:
 				v.append(f'{int(i, 0)}')
@@ -452,16 +454,29 @@ def _eval(s):
 	return '+'.join(v)
 
 
+class Inst:
+	def __init__(self, d):
+		self.code = d['code']
+		self.op = d['operator']
+		self.args = d['operands']
+		self.bits = d['bits'] or 16
+		self.time = d['time']
+		self.size = d['size']
+
+	def suffix(self):
+		self.op = f'{self.op}{self.bits}'
+
+
 def _f(s, *args):
 	return s.format(*args)
 
 
-def _i(op, type, *args, debug=False):
-	tmpl = globals()[f'{type}_tmpl']
-	body = _f(tmpl, *[_eval(i) for i in args])
-	method = _f(base_tmpl, op, body)
+def _i(i, debug=False):
+	tmpl = globals()[f'{i.op}_tmpl']
+	body = _f(tmpl, *[_eval(a, i.bits) for a in i.args])
+	method = _f(base_tmpl, i.code, repr(i.size), repr(i.time), body)
 	if debug:
-		print(f'# {op:02x}: {type} {",".join(args)}')
+		print(f'# {i.code:02x}: {i.op} {",".join(i.args)}')
 		print(method)
 	exec(method, globals())
 
@@ -476,27 +491,32 @@ def _load():
 			print(f'{e}')
 
 	for i in insts:
-		code = i['code']
-		op = i['operator']
-		args = i['operands']
-		bits = i['bits']
+		i = Inst(i)
 
 		# print(f'Generate {code:02x}: {op} {args}')
 
-		if op == 'ldhl' or op == 'ldd' or op == 'ldi' or op == 'ld':
-			_i(code, op, *args, debug=True)
+		if i.op == 'ldhl' or \
+     i.op == 'ldd' or \
+     i.op == 'ldi' or \
+     i.op == 'ld':
+			_i(i, debug=True)
 
-		elif op == 'inc' or op == 'dec':
-			_i(code, f'{op}{bits}', *args, debug=True)
+		elif i.op == 'inc' or \
+       i.op == 'dec':
+			i.suffix()
+			_i(i)
 
-		elif op == 'push' or op == 'pop':
-			_i(code, op, *args, debug=True)
+		elif i.op == 'push' or \
+       i.op == 'pop':
+			_i(i)
 
-		elif op == 'add':
-			if code == 0xe8:
-				_i(code, 'addsp', *args, debug=True)
+		elif i.op == 'add':
+			if i.code == 0xe8:
+				i.op = 'addsp'
+				_i(i)
 			else:
-				_i(code, f'{op}{bits}', *args, debug=True)
+				i.suffix()
+				_i(i)
 
 
 def op(cpu, op):
