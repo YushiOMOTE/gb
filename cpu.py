@@ -241,7 +241,7 @@ class MemFetcher(object):
 
 	def fetch(self):
 		b = self.mc[self.index]
-		print('fetch {:04x} {:02x}'.format(self.index, b))
+		# print('fetch {:04x} {:02x}'.format(self.index, b))
 		self.index += 1
 		return b
 

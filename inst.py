@@ -1,26 +1,40 @@
 import yaml
 import os
 import numpy as np
+import functools
 
 
 # check nth-bit carry carry on add
-def ca(x, y, n):
-	b = (1 << n)
-	m = b - 1
-	c = ((x & m) + (y & m)) & b
-	if c == b:
-		return 1
-	return 0
+def _ca(n, *args):
+	m = (1 << n) - 1
+	s = functools.reduce(lambda s,x: s + (x & m), args, 0)
+	return s > m
+
+def ha8(*args):
+	return _ca(4, *args)
+
+def ca8(*args):
+	return _ca(8, *args)
+
+def ha16(*args):
+	return _ca(12, *args)
+
+def ca16(*args):
+	return _ca(16, *args)
 
 
 # check nth-bit carry on sub
-def cs(x, y, n):
-	b = (1 << n)
-	m = b - 1
-	c = (b + (x & m) - (y & m)) & b
-	if c == 0:
-		return 0
-	return 1
+def _cs(n, *args):
+	m = (1 << n) - 1
+	a = args[0] & m
+	s = functools.reduce(lambda s,x: s + (x & m), args[1:], 0)
+	return a < s
+
+def hs8(*args):
+	return _cs(4, *args)
+
+def cs8(*args):
+	return _cs(8, *args)
 
 
 def z(v):
@@ -33,13 +47,13 @@ def add_sp(cpu, v):
 	sp = cpu.regs.sp
 	if v >= 0:
 		vv = v
-		cpu.regs.f.h |= ca(sp, vv, 12)
-		cpu.regs.f.c |= ca(sp, vv, 16)
+		cpu.regs.f.h = ha16(sp, vv)
+		cpu.regs.f.c = ca16(sp, vv)
 		return cpu.regs.sp + vv
 	else:
 		vv = abs(v)
-		cpu.regs.f.h |= cs(sp, vv, 12)
-		cpu.regs.f.c |= cs(sp, vv, 16)
+		cpu.regs.f.h = ha15(sp, vv)
+		cpu.regs.f.c = ca16(sp, vv)
 		return cpu.regs.sp - vv
 
 
@@ -85,18 +99,18 @@ dec16_tmpl = '''
 
 # INC8
 inc8_tmpl = '''
-	cpu.regs.f.h |= ca({0}, 1, 4)
+	cpu.regs.f.h = ha8({0}, 1)
 	{0} += 1
 	cpu.regs.f.n = 0
-	cpu.regs.f.z |= z({0})
+	cpu.regs.f.z = z({0})
 '''
 
 # DEC8
 dec8_tmpl = '''
-	cpu.regs.f.h |= cs({0}, 1, 4)
+	cpu.regs.f.h = hs8({0}, 1)
 	{0} -= 1
 	cpu.regs.f.n = 1
-	cpu.regs.f.z |= z({0})
+	cpu.regs.f.z = z({0})
 '''
 
 # LD t,f
@@ -127,8 +141,8 @@ ldhl_tmpl = '''
 # ADD16
 add16_tmpl = '''
 	v = {1}
-	cpu.regs.f.h |= ca({0}, v, 12)
-	cpu.regs.f.c |= ca({0}, v, 16)
+	cpu.regs.f.h = ha16({0}, v)
+	cpu.regs.f.c = ca16({0}, v)
 	{0} += v
 	cpu.regs.f.n = 0
 '''
@@ -136,8 +150,8 @@ add16_tmpl = '''
 # ADD8
 add8_tmpl = '''
 	v = {1}
-	cpu.regs.f.h |= ca({0}, v, 4)
-	cpu.regs.f.c |= ca({0}, v, 8)
+	cpu.regs.f.h = ha8({0}, v)
+	cpu.regs.f.c = ca8({0}, v)
 	{0} += v
 	cpu.regs.f.n = 0
 	cpu.regs.f.z = z({0})
@@ -154,9 +168,9 @@ addsp_tmpl = '''
 # ADC8
 adc8_tmpl = '''
 	v = {1}
-	c = cpu.regs.c
-	cpu.regs.f.h |= ca({0}, v + c, 4)
-	cpu.regs.f.c |= ca({0}, v + c, 8)
+	c = cpu.regs.f.c
+	cpu.regs.f.h = ha8({0}, v, c)
+	cpu.regs.f.c = ca8({0}, v, c)
 	{0} += (v + c)
 	cpu.regs.f.n = 0
 	cpu.regs.f.z = z({0})
@@ -165,8 +179,8 @@ adc8_tmpl = '''
 # SUB8
 sub8_tmpl = '''
 	v = {1}
-	cpu.regs.f.h |= cs({0}, v, 4)
-	cpu.regs.f.c |= cs({0}, v, 8)
+	cpu.regs.f.h = hs8({0}, v)
+	cpu.regs.f.c = cs8({0}, v)
 	{0} -= v
 	cpu.regs.f.n = 1
 	cpu.regs.f.z = z({0})
@@ -175,8 +189,8 @@ sub8_tmpl = '''
 # SBC8
 sbc8_tmpl = '''
 	v = {1}
-	cpu.regs.f.h |= cs({0}, v + c, 4)
-	cpu.regs.f.c |= cs({0}, v + c, 8)
+	cpu.regs.f.h = hs8({0}, v + c)
+	cpu.regs.f.c = cs8({0}, v + c)
 	{0} -= (v + c)
 	cpu.regs.f.n = 1
 	cpu.regs.f.z = z({0})
@@ -215,8 +229,8 @@ cp_tmpl = '''
 	a = cpu.regs.a
 	cpu.regs.f.z = z(a - v)
 	cpu.regs.f.n = 1
-	cpu.regs.f.h |= cs(a, v, 4)
-	cpu.regs.f.c |= cs(a, v, 8)
+	cpu.regs.f.h = hs8(a, v)
+	cpu.regs.f.c = cs8(a, v)
 '''
 
 
@@ -510,7 +524,7 @@ def _load():
        i.op == 'pop':
 			_i(i)
 
-		elif i.op == 'add':
+		elif i.op == 'add' or i.op == 'adc':
 			if i.code == 0xe8:
 				i.op = 'addsp'
 				_i(i)
