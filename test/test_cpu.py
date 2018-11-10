@@ -2,7 +2,6 @@ import unittest
 
 from cpu import Cpu
 
-
 class TestCpu(unittest.TestCase):
 	def _test_ld(self, op, t, f):
 		if not isinstance(op, list):
