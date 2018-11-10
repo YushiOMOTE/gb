@@ -3,16 +3,17 @@ from functools import reduce
 
 import alu
 
+
 def _carry(b, *args):
 	m = (1 << b) - 1
-	s = reduce(lambda s,x: s + (x & m), args, 0)
+	s = reduce(lambda s, x: s + (x & m), args, 0)
 	return s > m
 
 
 def _borrow(n, *args):
 	m = (1 << n) - 1
 	a = args[0] & m
-	s = reduce(lambda s,x: s + (x & m), args[1:], 0)
+	s = reduce(lambda s, x: s + (x & m), args[1:], 0)
 	return a < s
 
 
@@ -50,7 +51,10 @@ def sub8(p, q, c=0):
 def add16e(p, q, c=0):
 	s, [h, c, _, _], z = _add(16, p, np.uint16(np.int8(q)))
 	return s, [h, c], z
+
+
 import unittest
+
 
 class AluTest(unittest.TestCase):
 	def test_add8(self):

@@ -4,14 +4,14 @@ from functools import reduce
 
 def _carry(b, *args):
 	m = (1 << b) - 1
-	s = reduce(lambda s,x: s + (x & m), args, 0)
+	s = reduce(lambda s, x: s + (x & m), args, 0)
 	return s > m
 
 
 def _borrow(n, *args):
 	m = (1 << n) - 1
 	a = args[0] & m
-	s = reduce(lambda s,x: s + (x & m), args[1:], 0)
+	s = reduce(lambda s, x: s + (x & m), args[1:], 0)
 	return a < s
 
 

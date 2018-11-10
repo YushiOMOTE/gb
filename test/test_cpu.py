@@ -2,6 +2,7 @@ import unittest
 
 from cpu import Cpu
 
+
 class TestCpu(unittest.TestCase):
 	def _test_ld(self, op, t, f):
 		if not isinstance(op, list):
@@ -566,7 +567,8 @@ class TestCpu(unittest.TestCase):
 		cpu.decode()
 		var = self._get(cpu.regs, m, var)
 		op = [f'{i:02x}' for i in op]
-		print(f'{op}: {var:02x} == {expect:02x}, {cpu.regs.f.val:02x}=={expectf:02x}')
+		print(
+		    f'{op}: {var:02x} == {expect:02x}, {cpu.regs.f.val:02x}=={expectf:02x}')
 		self.assertEqual(var, expect)
 		self.assertEqual(cpu.regs.f.val, expectf)
 
@@ -575,17 +577,17 @@ class TestCpu(unittest.TestCase):
 
 		if x == y:
 			self._test_alu8(op, a, 0x22, 0x00, c, **{x: 0x11})
-			self._test_alu8(op, a, 0x32, 0x20, c, **{x: 0x19}) # set H
-			self._test_alu8(op, a, 0x22, 0x10, c, **{x: 0x91}) # set C
-			self._test_alu8(op, a, 0x00, 0x80, c, **{x: 0x00}) # set Z
-			self._test_alu8(op, a, 0x00, 0x90, c, **{x: 0x80}) # set Z + C
+			self._test_alu8(op, a, 0x32, 0x20, c, **{x: 0x19})  # set H
+			self._test_alu8(op, a, 0x22, 0x10, c, **{x: 0x91})  # set C
+			self._test_alu8(op, a, 0x00, 0x80, c, **{x: 0x00})  # set Z
+			self._test_alu8(op, a, 0x00, 0x90, c, **{x: 0x80})  # set Z + C
 		else:
 			self._test_alu8(op, a, 0xab, 0x00, c, **{x: 0x3a, y: 0x71})
-			self._test_alu8(op, a, 0x52, 0x20, c, **{x: 0x39, y: 0x19}) # set H
-			self._test_alu8(op, a, 0xed, 0x10, c, **{x: 0xfb, y: 0xf2}) # set C
-			self._test_alu8(op, a, 0x00, 0x80, c, **{x: 0x00, y: 0x00}) # set Z
-			self._test_alu8(op, a, 0x00, 0x90, c, **{x: 0x20, y: 0xe0}) # set Z + C
-			self._test_alu8(op, a, 0x00, 0xb0, c, **{x: 0x2a, y: 0xd6}) # set Z + C + H
+			self._test_alu8(op, a, 0x52, 0x20, c, **{x: 0x39, y: 0x19})  # set H
+			self._test_alu8(op, a, 0xed, 0x10, c, **{x: 0xfb, y: 0xf2})  # set C
+			self._test_alu8(op, a, 0x00, 0x80, c, **{x: 0x00, y: 0x00})  # set Z
+			self._test_alu8(op, a, 0x00, 0x90, c, **{x: 0x20, y: 0xe0})  # set Z + C
+			self._test_alu8(op, a, 0x00, 0xb0, c, **{x: 0x2a, y: 0xd6})  # set Z + C + H
 
 	def _test_adc8(self, op, a, x, y):
 		self._test_add8(op, a, x, y)
@@ -594,15 +596,14 @@ class TestCpu(unittest.TestCase):
 
 		if x == y:
 			self._test_alu8(op, a, 0x23, 0x00, c, **{x: 0x11})
-			self._test_alu8(op, a, 0x33, 0x20, c, **{x: 0x19}) # set H
-			self._test_alu8(op, a, 0x23, 0x10, c, **{x: 0x91}) # set C
+			self._test_alu8(op, a, 0x33, 0x20, c, **{x: 0x19})  # set H
+			self._test_alu8(op, a, 0x23, 0x10, c, **{x: 0x91})  # set C
 		else:
 			self._test_alu8(op, a, 0xac, 0x00, c, **{x: 0x3a, y: 0x71})
-			self._test_alu8(op, a, 0x53, 0x20, c, **{x: 0x39, y: 0x19}) # set H
-			self._test_alu8(op, a, 0xee, 0x10, c, **{x: 0xfb, y: 0xf2}) # set C
-			self._test_alu8(op, a, 0x00, 0xb0, c, **{x: 0x20, y: 0xdf}) # set Z + C
-			self._test_alu8(op, a, 0x00, 0xb0, c, **{x: 0x2a, y: 0xd5}) # set Z + C + H
-
+			self._test_alu8(op, a, 0x53, 0x20, c, **{x: 0x39, y: 0x19})  # set H
+			self._test_alu8(op, a, 0xee, 0x10, c, **{x: 0xfb, y: 0xf2})  # set C
+			self._test_alu8(op, a, 0x00, 0xb0, c, **{x: 0x20, y: 0xdf})  # set Z + C
+			self._test_alu8(op, a, 0x00, 0xb0, c, **{x: 0x2a, y: 0xd5})  # set Z + C + H
 
 	# ADD A,A 87 4
 	# ADD A,B 80 4
@@ -640,12 +641,12 @@ class TestCpu(unittest.TestCase):
 
 	def test_c6(self):
 		self._test_alu8([0xc6, 0x3a], 'a', 0xab, 0x00, False, a=0x71)
-		self._test_alu8([0xc6, 0x39], 'a', 0x52, 0x20, False, a=0x19) # set H
-		self._test_alu8([0xc6, 0xfb], 'a', 0xed, 0x10, False, a=0xf2) # set C
-		self._test_alu8([0xc6, 0x00], 'a', 0x00, 0x80, False, a=0x00) # set Z
-		self._test_alu8([0xc6, 0x20], 'a', 0x00, 0x90, False, a=0xe0) # set Z + C
-		self._test_alu8([0xc6, 0x2a], 'a', 0x00, 0xb0, False, a=0xd6) # set Z + C + H
-
+		self._test_alu8([0xc6, 0x39], 'a', 0x52, 0x20, False, a=0x19)  # set H
+		self._test_alu8([0xc6, 0xfb], 'a', 0xed, 0x10, False, a=0xf2)  # set C
+		self._test_alu8([0xc6, 0x00], 'a', 0x00, 0x80, False, a=0x00)  # set Z
+		self._test_alu8([0xc6, 0x20], 'a', 0x00, 0x90, False, a=0xe0)  # set Z + C
+		self._test_alu8([0xc6, 0x2a], 'a', 0x00, 0xb0, False,
+		                a=0xd6)  # set Z + C + H
 
 	# ADC A,A 8F 4
 	# ADC A,B 88 4
@@ -683,17 +684,19 @@ class TestCpu(unittest.TestCase):
 
 	def test_ce(self):
 		self._test_alu8([0xce, 0x3a], 'a', 0xab, 0x00, False, a=0x71)
-		self._test_alu8([0xce, 0x39], 'a', 0x52, 0x20, False, a=0x19) # set H
-		self._test_alu8([0xce, 0xfb], 'a', 0xed, 0x10, False, a=0xf2) # set C
-		self._test_alu8([0xce, 0x00], 'a', 0x00, 0x80, False, a=0x00) # set Z
-		self._test_alu8([0xce, 0x20], 'a', 0x00, 0x90, False, a=0xe0) # set Z + C
-		self._test_alu8([0xce, 0x2a], 'a', 0x00, 0xb0, False, a=0xd6) # set Z + C + H
+		self._test_alu8([0xce, 0x39], 'a', 0x52, 0x20, False, a=0x19)  # set H
+		self._test_alu8([0xce, 0xfb], 'a', 0xed, 0x10, False, a=0xf2)  # set C
+		self._test_alu8([0xce, 0x00], 'a', 0x00, 0x80, False, a=0x00)  # set Z
+		self._test_alu8([0xce, 0x20], 'a', 0x00, 0x90, False, a=0xe0)  # set Z + C
+		self._test_alu8([0xce, 0x2a], 'a', 0x00, 0xb0, False,
+		                a=0xd6)  # set Z + C + H
 
 		self._test_alu8([0xce, 0x3a], 'a', 0xac, 0x00, True, a=0x71)
-		self._test_alu8([0xce, 0x39], 'a', 0x53, 0x20, True, a=0x19) # set H
-		self._test_alu8([0xce, 0xfb], 'a', 0xee, 0x10, True, a=0xf2) # set C
-		self._test_alu8([0xce, 0x20], 'a', 0x00, 0xb0, True, a=0xdf) # set Z + C
-		self._test_alu8([0xce, 0x2a], 'a', 0x00, 0xb0, True, a=0xd5) # set Z + C + H
+		self._test_alu8([0xce, 0x39], 'a', 0x53, 0x20, True, a=0x19)  # set H
+		self._test_alu8([0xce, 0xfb], 'a', 0xee, 0x10, True, a=0xf2)  # set C
+		self._test_alu8([0xce, 0x20], 'a', 0x00, 0xb0, True, a=0xdf)  # set Z + C
+		self._test_alu8([0xce, 0x2a], 'a', 0x00, 0xb0, True, a=0xd5)  # set Z + C + H
+
 
 if __name__ == '__main__':
 	unittest.main()

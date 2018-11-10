@@ -525,12 +525,13 @@ def _load():
 			i.op = 'addsp'
 			_i(i)
 		elif i.op == 'inc' or \
-			 i.op == 'dec' or \
-			 i.op == 'add':
+    i.op == 'dec' or \
+    i.op == 'add':
 			i.suffix()
 			_i(i)
 		else:
 			_i(i)
+
 
 def op(cpu, op):
 	if op > 0xff:
