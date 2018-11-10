@@ -279,3 +279,14 @@ class Cpu(object):
 			inst.op(self, b << 8 | b)
 		else:
 			inst.op(self, b)
+
+	def push(self, v):
+		self.mc[self.regs.sp - 1] = (v >> 8) & 0xff
+		self.mc[self.regs.sp - 2] = v & 0xff
+		self.regs.sp -= 2
+
+	def pop(self):
+		v = self.mc[self.regs.sp] & 0xff
+		v |= (self.mc[self.regs.sp + 1] << 8) & 0xff00
+		self.regs.sp += 2
+		return v

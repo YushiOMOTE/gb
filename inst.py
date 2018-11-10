@@ -189,28 +189,14 @@ cp_tmpl = '''
 	cpu.regs.f.c = c
 '''
 
-
-def _push(cpu, v):
-	cpu.mc[cpu.regs.sp - 1] = (v >> 8) & 0xff
-	cpu.mc[cpu.regs.sp - 2] = v & 0xff
-	cpu.regs.sp -= 2
-
-
-def _pop(cpu):
-	v = cpu.mc[cpu.regs.sp] & 0xff
-	v |= (cpu.mc[cpu.regs.sp + 1] << 8) & 0xff00
-	cpu.regs.sp += 2
-	return v
-
-
 # PUSH
 push_tmpl = '''
-	_push(cpu, {0})
+	cpu.push({0})
 '''
 
 # POP
 pop_tmpl = '''
-	{0} = _pop(cpu)
+	{0} = cpu.pop()
 '''
 
 # SWAP
@@ -410,14 +396,14 @@ jrif_tmpl = '''
 
 # CALL x
 call_tmpl = '''
-	_push(cpu, cpu.regs.pc)
+	cpu.push(cpu.regs.pc)
 	cpu.regs.pc = {}
 '''
 
 # CALL x,y
 callif_tmpl = '''
 	if {}:
-		_push(cpu, cpu.regs.pc)
+		cpu.push(cpu.regs.pc)
 		cpu.regs.pc = {}
 '''
 
@@ -428,18 +414,18 @@ rst_tmpl = '''
 
 # RET
 ret_tmpl = '''
-	cpu.regs.pc = _pop(cpu)
+	cpu.regs.pc = cpu.pop()
 '''
 
 # RET x
 retif_tmpl = '''
 	if {}:
-		cpu.regs.pc = _pop(cpu)
+		cpu.regs.pc = cpu.pop()
 '''
 
 # RETI
 reti_tmpl = '''
-	cpu.regs.pc = _pop(cpu)
+	cpu.regs.pc = cpu.pop()
 	cpu.intr = True
 '''
 
