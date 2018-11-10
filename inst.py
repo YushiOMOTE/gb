@@ -166,7 +166,7 @@ addsp_tmpl = '''
 '''
 
 # ADC8
-adc8_tmpl = '''
+adc_tmpl = '''
 	v = {1}
 	c = cpu.regs.f.c
 	cpu.regs.f.h = ha8({0}, v, c)
@@ -176,21 +176,23 @@ adc8_tmpl = '''
 	cpu.regs.f.z = z({0})
 '''
 
-# SUB8
-sub8_tmpl = '''
-	v = {1}
-	cpu.regs.f.h = hs8({0}, v)
-	cpu.regs.f.c = cs8({0}, v)
-	{0} -= v
+# SUB
+sub_tmpl = '''
+	v = {}
+	a = cpu.regs.a
+	cpu.regs.f.h = hs8(a, v)
+	cpu.regs.f.c = cs8(a, v)
+	cpu.regs.a -= v
 	cpu.regs.f.n = 1
-	cpu.regs.f.z = z({0})
+	cpu.regs.f.z = z(cpu.regs.a)
 '''
 
-# SBC8
-sbc8_tmpl = '''
+# SBC
+sbc_tmpl = '''
+	a = {0}
 	v = {1}
-	cpu.regs.f.h = hs8({0}, v + c)
-	cpu.regs.f.c = cs8({0}, v + c)
+	cpu.regs.f.h = hs8(a, v, c)
+	cpu.regs.f.c = cs8(a, v, c)
 	{0} -= (v + c)
 	cpu.regs.f.n = 1
 	cpu.regs.f.z = z({0})
@@ -258,7 +260,7 @@ pop_tmpl = '''
 '''
 
 # SWAP
-swap_impl = '''
+swap_tmpl = '''
 	v = {0}
 	h = (v >> 8) & 0xf
 	l = v & 0xf
@@ -306,7 +308,7 @@ di_tmpl = '''
 '''
 
 # EI
-ei_impl = '''
+ei_tmpl = '''
 	cpu.ei = True
 '''
 
@@ -315,6 +317,15 @@ rlc_tmpl = '''
 	cpu.regs.f.c = {0} & 0x80
 	{0} = _rl({0}, 8)
 	cpu.regs.f.z = z({0})
+	cpu.regs.f.n = 0
+	cpu.regs.f.h = 0
+'''
+
+# RLCA
+rlca_tmpl = '''
+	cpu.regs.f.c = cpu.regs.a & 0x80
+	cpu.regs.a = _rl(cpu.regs.a, 8)
+	cpu.regs.f.z = 0
 	cpu.regs.f.n = 0
 	cpu.regs.f.h = 0
 '''
@@ -329,11 +340,30 @@ rl_tmpl = '''
 	cpu.regs.f.h = 0
 '''
 
+# RLA
+rla_tmpl = '''
+	v = cpu.regs.a | (cpu.regs.f.c << 8)
+	cpu.regs.a = _rl(v, 9) & 0xff
+	cpu.regs.f.c = v & 0x10
+	cpu.regs.f.z = 0
+	cpu.regs.f.n = 0
+	cpu.regs.f.h = 0
+'''
+
 # RRC
 rrc_tmpl = '''
 	cpu.regs.f.c = {0} & 1
 	{0} = _rr({0}, 8)
 	cpu.regs.f.z = z({0})
+	cpu.regs.f.n = 0
+	cpu.regs.f.h = 0
+'''
+
+# RRCA
+rrca_tmpl = '''
+	cpu.regs.f.c = cpu.regs.a & 1
+	cpu.regs.a = _rr(cpu.regs.a, 8)
+	cpu.regs.f.z = 0
 	cpu.regs.f.n = 0
 	cpu.regs.f.h = 0
 '''
@@ -347,6 +377,42 @@ rr_tmpl = '''
 	cpu.regs.f.z = z({0})
 	cpu.regs.f.n = 0
 	cpu.regs.f.h = 0
+'''
+
+# RRA
+rra_tmpl = '''
+	v = cpu.regs.a << 1 | cpu.regs.f.c
+	v = _rr(v, 9)
+	cpu.regs.a = (v >> 1) & 0xff
+	cpu.regs.f.c = v & 1
+	cpu.regs.f.z = 0
+	cpu.regs.f.n = 0
+	cpu.regs.f.h = 0
+'''
+
+# SLA
+sla_tmpl = '''
+	raise Exception('sla not implemented')
+'''
+
+# SRA
+sra_tmpl = '''
+	raise Exception('sra not implemented')
+'''
+
+# SRL
+srl_tmpl = '''
+	raise Exception('sla not implemented')
+'''
+
+# SRR
+srr_tmpl = '''
+	raise Exception('sra not implemented')
+'''
+
+# DAA
+daa_tmpl = '''
+	raise Exception('daa not implemented')
 '''
 
 # BIT
@@ -407,18 +473,18 @@ rst_tmpl = '''
 '''
 
 # RET
-ret_impl = '''
+ret_tmpl = '''
 	cpu.regs.pc = _pop(cpu)
 '''
 
 # RET x
-retif_impl = '''
+retif_tmpl = '''
 	if {}:
 		cpu.regs.pc = _pop(cpu)
 '''
 
 # RETI
-reti_impl = '''
+reti_tmpl = '''
 	cpu.regs.pc = _pop(cpu)
 	cpu.intr = True
 '''
@@ -437,6 +503,9 @@ def _dec(cpu, r):
 
 
 def _eval(s, bits=8):
+	if isinstance(s, int):
+		return s
+
 	s = s.lower()
 
 	if s == 'z':
@@ -507,31 +576,21 @@ def _load():
 	for i in insts:
 		i = Inst(i)
 
-		# print(f'Generate {code:02x}: {op} {args}')
+		if i.op == 'prefix':
+			continue
 
-		if i.op == 'ldhl' or \
-     i.op == 'ldd' or \
-     i.op == 'ldi' or \
-     i.op == 'ld':
-			_i(i, debug=True)
+		print(f'Generate {i.code:02x}: {i.op} {i.args}')
 
+		if i.code == 0xe8:
+			i.op = 'addsp'
+			_i(i)
 		elif i.op == 'inc' or \
-       i.op == 'dec':
+			 i.op == 'dec' or \
+			 i.op == 'add':
 			i.suffix()
 			_i(i)
-
-		elif i.op == 'push' or \
-       i.op == 'pop':
+		else:
 			_i(i)
-
-		elif i.op == 'add' or i.op == 'adc':
-			if i.code == 0xe8:
-				i.op = 'addsp'
-				_i(i)
-			else:
-				i.suffix()
-				_i(i)
-
 
 def op(cpu, op):
 	if op > 0xff:
