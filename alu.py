@@ -1,4 +1,3 @@
-import numpy as np
 from functools import reduce
 
 
@@ -15,37 +14,42 @@ def _borrow(n, *args):
 	return a < s
 
 
-def _add(b, p, q, c=0):
+def _add(b, p, q, c=0, hb=4, cb=8):
 	m = (1 << b) - 1
 	s = (p + q + c) & m
-	cs = [_carry(i * 4, p, q, c) for i in range(1, 5)]
+	h = _carry(hb, p, q, c)
+	c = _carry(cb, p, q, c)
 	z = (s == 0)
-	return (s, cs, z)
+	return (s, h, c, z)
 
 
-def _sub(b, p, q, c=0):
+def _sub(b, p, q, c=0, hb=4, cb=8):
 	m = (1 << b) - 1
 	s = (p - q - c) & m
-	cs = [_borrow(i * 4, p, q, c) for i in range(1, 5)]
+	h = _borrow(hb, p, q, c)
+	c = _borrow(cb, p, q, c)
 	z = (s == 0)
-	return (s, cs, z)
+	return (s, h, c, z)
+
+
+def signed(v):
+	if v & 0x80:
+		return 0xff00 | v
+	else:
+		return v
 
 
 def add8(p, q, c=0):
-	s, [h, c, _, _], z = _add(8, p, q, c)
-	return s, [h, c], z
+	return _add(8, p, q, c)
 
 
 def add16(p, q, c=0):
-	s, [_, _, h, c], z = _add(16, p, q, c)
-	return s, [h, c], z
+	return _add(16, p, q, c, 12, 16)
 
 
 def sub8(p, q, c=0):
-	s, [h, c, _, _], z = _sub(8, p, q, c)
-	return s, [h, c], z
+	return _sub(8, p, q, c)
 
 
 def add16e(p, q, c=0):
-	s, [h, c, _, _], z = _add(16, p, np.uint16(np.int8(q)))
-	return s, [h, c], z
+	return _add(16, p, signed(q), c)

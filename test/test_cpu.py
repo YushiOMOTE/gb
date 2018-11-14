@@ -1,6 +1,6 @@
 import unittest
 
-from cpu import Cpu
+from cpu import Cpu, MemFetcher
 
 
 class TestCpu(unittest.TestCase):
