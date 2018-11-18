@@ -1,5 +1,7 @@
 import inst
 
+from mmu import MemCtrl, MemFetcher
+
 
 class Flags(object):
 	def __init__(self, *args, **kwargs):
@@ -110,85 +112,6 @@ regs:
 		return s
 
 
-def load(f):
-	with open(f, 'rb') as f:
-		return f.read()
-
-
-class MemCtrl(object):
-	def __init__(self):
-		self.ram = [0] * 0x10000
-		boot = load('boot.bin')
-		self.ram[0:len(boot)] = boot
-		self.hooks = {}
-
-	def add_hook(self, low, high, read, write):
-		for i in range(low, high + 1):
-			self.hooks[i] = (read, write)
-
-	def __getitem__(self, addr):
-		if addr in self.hooks:
-			val = self.hooks[addr][0](addr)
-			if val:
-				return val
-
-		return self.ram[addr]
-
-	def __setitem__(self, addr, val):
-		if addr in self.hooks:
-			if self.hooks[addr][1](addr, val):
-				return val
-
-		self.ram[addr] = val & 0xff
-
-
-class MemAccessor(object):
-	def __init__(self, mc, unit):
-		self.mc = mc
-		self.unit = unit
-
-	def __getitem__(self, addr):
-		v = 0
-		for i in range(0, self.unit):
-			v |= (self.mc[addr + i] << (i * 8))
-		return v
-
-	def __setitem__(self, addr, val):
-		for i in range(0, self.unit):
-			self.mc[addr + i] = (val >> (i * 8)) & 0xff
-
-
-class MemFetcher(object):
-	def __init__(self, mc, debugger=None):
-		self.mc = mc
-		self.as8 = MemAccessor(mc, 1)
-		self.as16 = MemAccessor(mc, 2)
-		self.index = 0
-		self.debugger = debugger
-
-	def __getitem__(self, addr):
-		return self.mc[addr]
-
-	def __setitem__(self, addr, val):
-		self.mc[addr] = val & 0xff
-
-	def fetch_set(self, b):
-		self.index = b
-
-	def fetch(self):
-		b = self.mc[self.index]
-
-		if self.debugger:
-			self.debugger.on_fetch(self, self.index, b)
-
-		self.index += 1
-		return b
-
-	def fetch16(self):
-		a = self.fetch()
-		return (self.fetch() << 8) | a
-
-
 class Cpu(object):
 	def __init__(self, mc, debugger=None):
 		self.regs = Regs()
@@ -220,26 +143,30 @@ class Cpu(object):
 		self.regs.sp += 2
 		return v
 
-	def run(self):
+	def setup(self):
 		if self.debugger:
-			self.debugger.on_start(self)
+			self.debugger.on_start_cpu(self)
 
-		while True:
-			if self.intr:
-				# TODO: interrupt
-				pass
+	def step(self):
+		if self.intr:
+			# TODO: interrupt
+			pass
 
-			if self.ei:
-				self.ei = False
-				self.intr = True
-			if self.di:
-				self.di = False
-				self.intr = False
+		if self.ei:
+			self.ei = False
+			self.intr = True
+		if self.di:
+			self.di = False
+			self.intr = False
 
-			if self.debugger:
-				self.debugger.before_exec()
+		if self.debugger:
+			self.debugger.before_exec()
 
-			self.decode()
+		tp1 = self.time
+		self.decode()
+		tp2 = self.time
 
-			if self.debugger:
-				self.debugger.after_exec()
+		if self.debugger:
+			self.debugger.after_exec()
+
+		return tp2 - tp1

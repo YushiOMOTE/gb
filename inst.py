@@ -11,9 +11,9 @@ def z(v):
 
 
 def _rl(n, b):
-	b = n & (1 << (b - 1))
+	r = n & (1 << (b - 1))
 	n <<= 1
-	if b:
+	if r:
 		n |= 1
 	n &= ((1 << b) - 1)
 	return n
@@ -21,9 +21,9 @@ def _rl(n, b):
 
 def _rr(n, b):
 	n &= ((1 << b) - 1)
-	b = n & 1
+	r = n & 1
 	n >>= 1
-	if b:
+	if r:
 		n |= (1 << (b - 1))
 	return n
 
@@ -224,7 +224,7 @@ cpl_tmpl = '''
 
 # CCF
 ccf_tmpl = '''
-	flgs.c ^= 1
+	flgs.c = not flgs.c
 	flgs.n = 0
 	flgs.h = 0
 '''
@@ -279,9 +279,9 @@ rlca_tmpl = '''
 # RL
 rl_tmpl = '''
 	v = {0} | (flgs.c << 8)
-	r = _rl(v, 9) & 0xff
-	{0} = r
-	flgs.c = v & 0x10
+	r = _rl(v, 9)
+	{0} = r & 0xff
+	flgs.c = r & 0x100
 	flgs.z = z(r)
 	flgs.n = 0
 	flgs.h = 0
@@ -290,8 +290,9 @@ rl_tmpl = '''
 # RLA
 rla_tmpl = '''
 	v = regs.a | (flgs.c << 8)
-	regs.a = _rl(v, 9) & 0xff
-	flgs.c = v & 0x10
+	r = _rl(v, 9)
+	regs.a = r & 0xff
+	flgs.c = r & 0x100
 	flgs.z = 0
 	flgs.n = 0
 	flgs.h = 0
@@ -368,7 +369,7 @@ daa_tmpl = '''
 
 # BIT
 bit_tmpl = '''
-	flgs.z = {1} | 1 << {0}
+	flgs.z = z({1} & 1 << {0})
 	regs.f.n = 0
 	regs.f.h = 1
 '''
@@ -402,7 +403,7 @@ jpif_tmpl = '''
 
 # JR x
 jr_tmpl = '''
-	regs.pc += (alu.signed({}) + size) + 0xffff
+	regs.pc = (regs.pc + alu.signed({}) + size) & 0xffff
 	cpu.time += time
 	return
 '''
@@ -414,6 +415,7 @@ jrif_tmpl = '''
 		cpu.time += time[0]
 	else:
 		cpu.time += time[1]
+		regs.pc += size
 	return
 '''
 
@@ -433,6 +435,7 @@ callif_tmpl = '''
 		cpu.time += time[0]
 	else:
 		cpu.time += time[1]
+		regs.pc += size
 	return
 '''
 
@@ -457,6 +460,7 @@ retif_tmpl = '''
 		cpu.time += time[0]
 	else:
 		cpu.time += time[1]
+		regs.pc += size
 	return
 '''
 
@@ -478,11 +482,11 @@ def _eval(s, bits=8):
 	if s == 'z':
 		return f'flgs.z'
 	elif s == 'nz':
-		return f'~flgs.z'
+		return f'not flgs.z'
 	elif s == 'cf':
 		return f'flgs.c'
 	elif s == 'nc':
-		return f'~flgs.c'
+		return f'not flgs.c'
 
 	if s.startswith('('):
 		s = s[1:-1]
